@@ -1,12 +1,15 @@
 defmodule ExBankingTest do
   use ExUnit.Case
   doctest ExBanking
-  alias ExBanking.Otp.UserSupervisor
+  alias ExBanking.Otp.{UserSupervisor, Broker}
 
-  @test_user "test"
+  @test_user "test_user"
 
   setup do
-    on_exit(fn -> UserSupervisor.termine_all() end)
+    on_exit(fn ->
+      Broker.unregister_records()
+      UserSupervisor.termine_all()
+    end)
   end
 
   describe "create_user/1" do
@@ -23,8 +26,7 @@ defmodule ExBankingTest do
   describe "deposit/3" do
     setup do
       :ok = ExBanking.create_user(@test_user)
-      {:ok, pid} = ExBanking.Otp.UserServer.look_up(@test_user)
-      %{user_name: @test_user, pid: pid}
+      %{user_name: @test_user}
     end
 
     test "it should deposit", %{user_name: user_name} do
@@ -39,8 +41,8 @@ defmodule ExBankingTest do
       assert {:error, :user_does_not_exist} = ExBanking.deposit("fake", 50.20, "TL")
     end
 
-    test "it should return to many request to user", %{user_name: user_name, pid: pid} do
-      create_load(pid, 20)
+    test "it should return to many request to user", %{user_name: user_name} do
+      create_load(user_name, 20)
       assert {:error, :too_many_requests_to_user} = ExBanking.deposit(user_name, 50.20, "TL")
     end
   end
@@ -49,8 +51,7 @@ defmodule ExBankingTest do
     setup do
       :ok = ExBanking.create_user(@test_user)
       {:ok, _} = ExBanking.deposit(@test_user, 100, "TL")
-      {:ok, pid} = ExBanking.Otp.UserServer.look_up(@test_user)
-      %{user_name: @test_user, pid: pid}
+      %{user_name: @test_user}
     end
 
     test "it should withdraw", %{user_name: user_name} do
@@ -69,8 +70,8 @@ defmodule ExBankingTest do
       assert {:error, :user_does_not_exist} = ExBanking.withdraw("fake", 50.20, "TL")
     end
 
-    test "it should return to many request to user", %{user_name: user_name, pid: pid} do
-      create_load(pid, 20)
+    test "it should return to many request to user", %{user_name: user_name} do
+      create_load(user_name, 20)
       assert {:error, :too_many_requests_to_user} = ExBanking.withdraw(user_name, 50.20, "TL")
     end
   end
@@ -79,8 +80,7 @@ defmodule ExBankingTest do
     setup do
       :ok = ExBanking.create_user(@test_user)
       {:ok, _} = ExBanking.deposit(@test_user, 100.05, "TL")
-      {:ok, pid} = ExBanking.Otp.UserServer.look_up(@test_user)
-      %{user_name: @test_user, pid: pid}
+      %{user_name: @test_user}
     end
 
     test "it should get_balance", %{user_name: user_name} do
@@ -99,8 +99,8 @@ defmodule ExBankingTest do
       assert {:ok, 0.0} = ExBanking.get_balance(user_name, "euro")
     end
 
-    test "it should return to many request to user", %{user_name: user_name, pid: pid} do
-      create_load(pid, 20)
+    test "it should return to many request to user", %{user_name: user_name} do
+      create_load(user_name, 20)
       assert {:error, :too_many_requests_to_user} = ExBanking.get_balance(user_name, "TL")
     end
   end
@@ -112,10 +112,7 @@ defmodule ExBankingTest do
       :ok = ExBanking.create_user(@test_user)
       :ok = ExBanking.create_user(to)
       {:ok, _} = ExBanking.deposit(@test_user, 100.00, currency)
-      {:ok, from_pid} = ExBanking.Otp.UserServer.look_up(@test_user)
-      {:ok, to_pid} = ExBanking.Otp.UserServer.look_up(to)
-
-      %{from: @test_user, to: to, currency: currency, from_pid: from_pid, to_pid: to_pid}
+      %{from: @test_user, to: to, currency: currency}
     end
 
     test "it should send money", %{from: from, to: to, currency: currency} do
@@ -137,25 +134,21 @@ defmodule ExBankingTest do
     test "it should return to many request to sender", %{
       from: from,
       to: to,
-      currency: currency,
-      from_pid: from_pid
+      currency: currency
     } do
-      create_load(from_pid, 20)
+      create_load(from, 20)
       assert {:error, :too_many_requests_to_sender} = ExBanking.send(from, to, 30.0, currency)
     end
 
     test "it should return to many request to receiver", %{
       from: from,
       to: to,
-      currency: currency,
-      to_pid: to_pid
+      currency: currency
     } do
-      create_load(to_pid, 20)
+      create_load(to, 20)
       assert {:error, :too_many_requests_to_receiver} = ExBanking.send(from, to, 30.0, currency)
     end
   end
 
-  defp create_load(pid, message_count) do
-    Enum.each(1..message_count, fn _ -> Process.send(pid, {:sleep, 2000}, []) end)
-  end
+  defp create_load(user_name, message_count), do: Broker.increase(user_name, message_count)
 end
