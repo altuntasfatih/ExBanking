@@ -1,5 +1,5 @@
 defmodule ExBanking.Context.UserContext do
-  alias ExBanking.Otp.{UserSupervisor, UserServer}
+  alias ExBanking.Otp.{UserSupervisor, UserServer, Broker}
   alias ExBanking.Model.User
 
   @threshold 10
@@ -40,23 +40,19 @@ defmodule ExBanking.Context.UserContext do
 
   def proxy(user_name, message) do
     case look_up(user_name) do
-      {:ok, pid} -> message.(pid)
-      err -> err
+      {:ok, pid} ->
+        increase_operation_count(user_name)
+        message.(pid)
+
+      err ->
+        err
     end
   end
 
-  def look_up(user_name) do
-    with {:ok, pid} <- UserServer.look_up(user_name),
-         true <- available?(pid) do
-      {:ok, pid}
-    else
-      false -> {:error, :too_many_requests_to_user}
-      {:error, :process_is_not_alive} -> {:error, :user_does_not_exist}
-    end
-  end
+  def look_up({:ok, {_, pid, count}}) when count < @threshold, do: {:ok, pid}
+  def look_up({:ok, _}), do: {:error, :too_many_requests_to_user}
+  def look_up({:error, :process_is_not_alive}), do: {:error, :user_does_not_exist}
+  def look_up(user_name), do: Broker.look_up(user_name) |> look_up()
 
-  defp available?({:message_queue_len, size}), do: size < @threshold
-
-  defp available?(pid) when is_pid(pid),
-    do: Process.info(pid, :message_queue_len) |> available?()
+  def increase_operation_count(user_name), do: Broker.increase(user_name)
 end

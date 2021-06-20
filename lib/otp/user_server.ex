@@ -1,35 +1,40 @@
 defmodule ExBanking.Otp.UserServer do
   use GenServer
   alias ExBanking.Model.User
+  alias ExBanking.Otp.Broker
 
   @spec start_link(User.t()) :: :ignore | {:error, any} | {:ok, pid}
   def start_link(%User{} = user) do
-    GenServer.start_link(__MODULE__, user, name: via_tuple(user.name))
+    case Broker.look_up(user.name) do
+      {:error, :process_is_not_alive} -> GenServer.start_link(__MODULE__, user)
+      {:ok, {_, pid, _}} -> {:error, {:already_started, pid}}
+    end
   end
 
   @impl true
   def init(state) do
+    true = Broker.register(self(), state.name)
     {:ok, state}
   end
 
   @impl true
   def handle_call({:deposit, amount, currency}, _from, user) do
     {:ok, updated_user} = User.deposit(user, amount, currency)
-    {:reply, User.get_balance(updated_user, currency), updated_user}
+    {:reply, User.get_balance(updated_user, currency), updated_user, {:continue, :decrease}}
   end
 
   @impl true
   def handle_call({:withdraw, amount, currency}, _from, user) do
     case User.withdraw(user, amount, currency) do
       {:ok, updated_user} -> {:reply, User.get_balance(updated_user, currency), updated_user}
-      err -> {:reply, err, user}
+      err -> {:reply, err, user, {:continue, :decrease}}
     end
   end
 
   @impl true
   def handle_call({:receive_money, amount, currency}, _from, user) do
     {:ok, updated_user} = User.deposit(user, amount, currency)
-    {:reply, User.get_balance(updated_user, currency), updated_user}
+    {:reply, User.get_balance(updated_user, currency), updated_user, {:continue, :decrease}}
   end
 
   @impl true
@@ -37,21 +42,20 @@ defmodule ExBanking.Otp.UserServer do
     with {:ok, updated_user} <- User.transfer_money(user, amount, currency),
          {:ok, current_balance} = User.get_balance(updated_user, currency),
          {:ok, to_user_balance} <- transfer_money(to_user, amount, currency) do
-      {:reply, {:ok, current_balance, to_user_balance}, updated_user}
+      {:reply, {:ok, current_balance, to_user_balance}, updated_user, {:continue, :decrease}}
     else
-      err -> {:reply, err, user}
+      err -> {:reply, err, user, {:continue, :decrease}}
     end
   end
 
   @impl true
   def handle_call({:get_balance, currency}, _from, user) do
-    {:reply, User.get_balance(user, currency), user}
+    {:reply, User.get_balance(user, currency), user, {:continue, :decrease}}
   end
 
-  # only test purpose
   @impl true
-  def handle_info({:sleep, milisecond}, state) do
-    Process.sleep(milisecond)
+  def handle_continue(:decrease, %User{name: user_name} = state) do
+    decrease_operation_count(user_name)
     {:noreply, state}
   end
 
@@ -83,15 +87,11 @@ defmodule ExBanking.Otp.UserServer do
     do: via(user, &GenServer.call(&1, {:withdraw, amount, currency}))
 
   def via(user_name, callback) when is_binary(user_name),
-    do: ExBanking.Otp.Registry.where_is({__MODULE__, user_name}) |> via(callback)
+    do: Broker.look_up(user_name) |> via(callback)
 
-  def via({:ok, pid}, callback) when is_pid(pid), do: callback.(pid)
+  def via({:ok, {_user_name, pid, _load}}, callback) when is_pid(pid), do: callback.(pid)
   def via(err, _), do: err
 
-  @spec look_up(binary()) :: {:error, :process_is_not_alive} | {:ok, pid()}
-  def look_up(user_name), do: ExBanking.Otp.Registry.where_is({__MODULE__, user_name})
-
-  def via_tuple(user_name) do
-    ExBanking.Otp.Registry.via_tuple({__MODULE__, user_name})
-  end
+  @spec decrease_operation_count(binary()) :: integer
+  defp decrease_operation_count(user_name), do: Broker.decrease(user_name)
 end
