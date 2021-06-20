@@ -9,3 +9,18 @@ Supported operations:
   * deposit 
   * withdraw
   * send
+
+There are two different implemantations in branches.
+ * [counter-based-load-balancer](https://github.com/altuntasfatih/ExBanking/tree/counter-based-load-balancer)
+
+   Process discovery is carrid out using Ets.
+
+   Load balancing is carrid out by a counter on Ets.
+
+ * [mailbox-size-based-load-balancer](https://github.com/altuntasfatih/ExBanking/tree/mailbox-size-based-load-balancer)
+
+   Process discovery is carrid out using Registry.
+
+   Load balancing is carrid out by a Mailbox.size(Process.info(:message_queue_len))
+
+ * main branch is same counter-based-load-balancer
