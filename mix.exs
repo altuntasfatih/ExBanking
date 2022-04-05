@@ -5,7 +5,7 @@ defmodule ExBanking.MixProject do
     [
       app: :ex_banking,
       version: "0.1.0",
-      elixir: "~> 1.11",
+      elixir: "~> 1.12",
       start_permanent: Mix.env() == :prod,
       deps: deps()
     ]
@@ -19,6 +19,8 @@ defmodule ExBanking.MixProject do
   end
 
   defp deps do
-    []
+    [
+      {:credo, "~> 1.6", only: [:dev, :test], runtime: false}
+    ]
   end
 end
