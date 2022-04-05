@@ -3,45 +3,45 @@ defmodule ExBanking.Model.User do
             accounts: %{}
 
   alias __MODULE__
-  defguard is_exist(accounts, currency) when is_map_key(accounts, currency)
+
+  @initial_balance 0.0
 
   @type t :: %User{
           name: String.t(),
-          accounts: %{String.t() => float()}
+          accounts: map()
         }
-
+  @spec new(name :: String.t()) :: User.t()
   def new(name) when is_binary(name), do: %User{name: name}
 
+  @spec deposit(user :: User.t(), amount :: float(), currency :: String.t()) :: {:ok, User.t()}
   def deposit(%User{accounts: accounts} = user, amount, currency) do
-    {:ok,
-     %User{
-       user
-       | accounts: Map.update(accounts, currency, amount, &(&1 + amount))
-     }}
+    updated_user = %User{user | accounts: Map.update(accounts, currency, amount, &(&1 + amount))}
+    {:ok, updated_user}
   end
 
-  def transfer_money(user, amount, currency), do: withdraw(user, amount, currency)
-
+  @spec withdraw(user :: User.t(), amount :: float(), currency :: String.t()) ::
+          {:ok, User.t()} | {:error, :not_enough_money}
   def withdraw(%User{accounts: accounts} = user, amount, currency) do
     if enough?(accounts, amount, currency) do
-      {:ok,
-       %User{
-         user
-         | accounts: Map.update(accounts, currency, amount, &(&1 - amount))
-       }}
+      updated_user = %User{
+        user
+        | accounts: Map.update(accounts, currency, amount, &(&1 - amount))
+      }
+
+      {:ok, updated_user}
     else
       {:error, :not_enough_money}
     end
   end
 
-  def get_balance(%User{accounts: accounts}, currency) when is_exist(accounts, currency),
-    do: {:ok, Map.get(accounts, currency)}
+  @spec get_balance(user :: User.t(), currency :: String.t()) :: {:ok, float()}
+  def get_balance(%User{accounts: accounts}, currency) do
+    {:ok, Map.get(accounts, currency, @initial_balance)}
+  end
 
-  def get_balance(_, _), do: {:ok, 0.0}
-
-  def enough?(accounts, amount, currency),
+  defp enough?(accounts, amount, currency),
     do: Map.get(accounts, currency) |> enough?(amount)
 
-  def enough?(nil, _), do: false
-  def enough?(balance, requested_amount), do: balance > requested_amount
+  defp enough?(nil, _), do: false
+  defp enough?(balance, requested_amount), do: balance > requested_amount
 end

@@ -39,7 +39,7 @@ defmodule ExBanking.Otp.UserServer do
 
   @impl true
   def handle_call({:send_money, to_user, amount, currency}, _from, user) do
-    with {:ok, updated_user} <- User.transfer_money(user, amount, currency),
+    with {:ok, updated_user} <- User.withdraw(user, amount, currency),
          {:ok, current_balance} = User.get_balance(updated_user, currency),
          {:ok, to_user_balance} <- transfer_money(to_user, amount, currency) do
       {:reply, {:ok, current_balance, to_user_balance}, updated_user, {:continue, :decrease}}
