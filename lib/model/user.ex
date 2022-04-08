@@ -11,24 +11,21 @@ defmodule ExBanking.Model.User do
           accounts: map()
         }
   @spec new(name :: String.t()) :: User.t()
-  def new(name) when is_binary(name), do: %User{name: name}
+  def new(name), do: %User{name: name}
 
   @spec deposit(user :: User.t(), amount :: float(), currency :: String.t()) :: {:ok, User.t()}
   def deposit(%User{accounts: accounts} = user, amount, currency) do
-    updated_user = %User{user | accounts: Map.update(accounts, currency, amount, &(&1 + amount))}
-    {:ok, updated_user}
+    user = %{user | accounts: Map.update(accounts, currency, amount, &(&1 + amount))}
+    {:ok, user}
   end
 
   @spec withdraw(user :: User.t(), amount :: float(), currency :: String.t()) ::
           {:ok, User.t()} | {:error, :not_enough_money}
   def withdraw(%User{accounts: accounts} = user, amount, currency) do
     if enough?(accounts, amount, currency) do
-      updated_user = %User{
-        user
-        | accounts: Map.update(accounts, currency, amount, &(&1 - amount))
-      }
+      user = %{user | accounts: Map.update(accounts, currency, amount, &(&1 - amount))}
 
-      {:ok, updated_user}
+      {:ok, user}
     else
       {:error, :not_enough_money}
     end
@@ -40,8 +37,7 @@ defmodule ExBanking.Model.User do
   end
 
   defp enough?(accounts, amount, currency),
-    do: Map.get(accounts, currency) |> enough?(amount)
+    do: Map.get(accounts, currency, @initial_balance) |> enough?(amount)
 
-  defp enough?(nil, _), do: false
   defp enough?(balance, requested_amount), do: balance > requested_amount
 end

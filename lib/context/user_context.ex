@@ -4,48 +4,54 @@ defmodule ExBanking.Context.UserContext do
 
   @threshold 10
 
+  @spec create_user(binary) :: :ok | {:error, :user_already_exists}
   def create_user(user_name) do
-    user = User.new(user_name)
-
-    case UserSupervisor.create_user(user) do
-      {:ok, _} -> :ok
+    with user <- User.new(user_name),
+         {:ok, _} <- UserSupervisor.create_user(user) do
+      :ok
+    else
       {:error, {:already_started, _pid}} -> {:error, :user_already_exists}
     end
   end
 
   def deposit(user_name, amount, currency) do
-    proxy(user_name, &UserServer.deposit(&1, Util.round(amount), currency))
+    proxy(user_name, &UserServer.deposit(&1, amount, currency))
   end
 
   def withdraw(user_name, amount, currency) do
-    proxy(user_name, &UserServer.withdraw(&1, Util.round(amount), currency))
+    proxy(user_name, &UserServer.withdraw(&1, amount, currency))
   end
 
   def get_balance(user_name, currency) do
     proxy(user_name, &UserServer.get_balance(&1, currency))
   end
 
-  def send(from_user, to_user, amount, currency) do
-    with {{:ok, from_pid}, _} <- {look_up(from_user), :from},
-         {{:ok, _}, _} <- {look_up(to_user), :to} do
-      UserServer.send(from_pid, to_user, Util.round(amount), currency)
+  def send(sender_user, receiver_user, amount, currency) do
+    with {:sender?, {:ok, sender_pid}} <- {:sender?, look_up(sender_user)},
+         {:receiver?, {:ok, _}} <- {:receiver?, look_up(receiver_user)} do
+      UserServer.send(sender_pid, receiver_user, amount, currency)
     else
-      {{:error, :user_does_not_exist}, :from} -> {:error, :sender_does_not_exist}
-      {{:error, :user_does_not_exist}, :to} -> {:error, :receiver_does_not_exist}
-      {{:error, :too_many_requests_to_user}, :from} -> {:error, :too_many_requests_to_sender}
-      {{:error, :too_many_requests_to_user}, :to} -> {:error, :too_many_requests_to_receiver}
-      {{err, _}} -> err
+      {:sender?, {:error, :user_does_not_exist}} ->
+        {:error, :sender_does_not_exist}
+
+      {:receiver?, {:error, :user_does_not_exist}} ->
+        {:error, :receiver_does_not_exist}
+
+      {:sender?, {:error, :too_many_requests_to_user}} ->
+        {:error, :too_many_requests_to_sender}
+
+      {:receiver?, {:error, :too_many_requests_to_user}} ->
+        {:error, :too_many_requests_to_receiver}
+
+      err ->
+        err
     end
   end
 
   def proxy(user_name, message) do
-    case look_up(user_name) do
-      {:ok, pid} ->
-        increase_operation_count(user_name)
-        message.(pid)
-
-      err ->
-        err
+    with {:ok, pid} <- look_up(user_name) do
+      increase_operation_count(user_name)
+      message.(pid)
     end
   end
 

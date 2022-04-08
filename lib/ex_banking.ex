@@ -16,16 +16,17 @@ defmodule ExBanking do
           | :too_many_requests_to_sender
           | :too_many_requests_to_receiver
 
-  @spec create_user(user :: String.t()) :: :ok | {:error, errors()}
+  # todo split errors
+  @spec create_user(user :: String.t()) :: :ok | {:error, :wrong_arguments | :user_already_exists}
   def create_user(user) when is_binary(user), do: UserContext.create_user(user)
   def create_user(_), do: {:error, :wrong_arguments}
 
   @spec deposit(user :: String.t(), amount :: number, currency :: String.t()) ::
           {:ok, new_balance :: number}
-          | {:error, errors()}
+          | {:error, :wrong_arguments | :user_does_not_exist | :too_many_requests_to_user}
   def deposit(user, amount, currency)
       when is_binary(user) and is_number(amount) and is_binary(currency),
-      do: UserContext.deposit(user, amount, currency)
+      do: UserContext.deposit(user, Util.round(amount), currency)
 
   def deposit(_, _, _), do: {:error, :wrong_arguments}
 
@@ -33,7 +34,7 @@ defmodule ExBanking do
           {:ok, new_balance :: number} | {:error, errors()}
   def withdraw(user, amount, currency)
       when is_binary(user) and is_number(amount) and is_binary(currency),
-      do: UserContext.withdraw(user, amount, currency)
+      do: UserContext.withdraw(user, Util.round(amount), currency)
 
   def withdraw(_, _, _), do: {:error, :wrong_arguments}
 
@@ -56,5 +57,5 @@ defmodule ExBanking do
   def send(from_user, to_user, amount, currency)
       when is_binary(from_user) and is_binary(to_user) and is_number(amount) and
              is_binary(currency),
-      do: UserContext.send(from_user, to_user, amount, currency)
+      do: UserContext.send(from_user, to_user, Util.round(amount), currency)
 end
