@@ -6,6 +6,7 @@ defmodule ExBankingTest do
   @user "test_user"
   @currency_tl "TL"
   @currency_usd "USD"
+  @waiting_message_count 20
 
   setup do
     on_exit(fn ->
@@ -21,6 +22,7 @@ defmodule ExBankingTest do
 
     test "it should return user already exist user" do
       :ok = ExBanking.create_user(@user)
+
       assert {:error, :user_already_exists} = ExBanking.create_user(@user)
     end
   end
@@ -56,7 +58,8 @@ defmodule ExBankingTest do
     end
 
     test "it should return to many request to user", %{user: user} do
-      create_load(user, 20)
+      refute increase_load(user)
+
       assert {:error, :too_many_requests_to_user} = ExBanking.deposit(user, 50.20, "TL")
     end
   end
@@ -92,7 +95,8 @@ defmodule ExBankingTest do
     end
 
     test "it should return to many request to user", %{user: user} do
-      create_load(user, 20)
+      refute increase_load(user)
+
       assert {:error, :too_many_requests_to_user} = ExBanking.withdraw(user, 50.20, "TL")
     end
   end
@@ -127,7 +131,8 @@ defmodule ExBankingTest do
     end
 
     test "it should return to many request to user", %{user: user} do
-      create_load(user, 20)
+      refute increase_load(user)
+
       assert {:error, :too_many_requests_to_user} = ExBanking.get_balance(user, @currency_tl)
     end
   end
@@ -165,7 +170,8 @@ defmodule ExBankingTest do
       from: from,
       to: to
     } do
-      create_load(from, 20)
+      refute increase_load(from)
+
       assert {:error, :too_many_requests_to_sender} = ExBanking.send(from, to, 30.0, @currency_tl)
     end
 
@@ -173,12 +179,12 @@ defmodule ExBankingTest do
       from: from,
       to: to
     } do
-      create_load(to, 20)
+      refute increase_load(to)
 
       assert {:error, :too_many_requests_to_receiver} =
                ExBanking.send(from, to, 30.0, @currency_tl)
     end
   end
 
-  defp create_load(user, message_count), do: Broker.increase(user, message_count)
+  defp increase_load(user), do: @waiting_message_count != Broker.increase(user, @waiting_message_count)
 end
