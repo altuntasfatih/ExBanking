@@ -28,36 +28,36 @@ defmodule ExBankingTest do
   describe "deposit/3" do
     setup do
       :ok = ExBanking.create_user(@user)
-      %{user_name: @user}
+      %{user: @user}
     end
 
-    test "it should deposit TL", %{user_name: user_name} do
-      assert {:ok, 20.10} = ExBanking.deposit(user_name, 20.10, @currency_tl)
-      assert {:ok, 30.30} = ExBanking.deposit(user_name, 10.20, @currency_tl)
+    test "it should deposit TL", %{user: user} do
+      assert {:ok, 20.10} = ExBanking.deposit(user, 20.10, @currency_tl)
+      assert {:ok, 30.30} = ExBanking.deposit(user, 10.20, @currency_tl)
     end
 
-    test "it should deposit USD", %{user_name: user_name} do
-      assert {:ok, 20.10} = ExBanking.deposit(user_name, 20.10, @currency_usd)
-      assert {:ok, 30.30} = ExBanking.deposit(user_name, 10.20, @currency_usd)
+    test "it should deposit USD", %{user: user} do
+      assert {:ok, 20.10} = ExBanking.deposit(user, 20.10, @currency_usd)
+      assert {:ok, 30.30} = ExBanking.deposit(user, 10.20, @currency_usd)
     end
 
-    test "it should return wrong arguments", %{user_name: user_name} do
-      assert {:error, :wrong_arguments} = ExBanking.deposit(user_name, "a", 1)
+    test "it should return wrong arguments", %{user: user} do
+      assert {:error, :wrong_arguments} = ExBanking.deposit(user, "a", 1)
     end
 
     test "it should return wrong arguments when amount is below than zero", %{
-      user_name: user_name
+      user: user
     } do
-      assert {:error, :wrong_arguments} = ExBanking.deposit(user_name, -20, @currency_tl)
+      assert {:error, :wrong_arguments} = ExBanking.deposit(user, -20, @currency_tl)
     end
 
     test "it should return user does not exist", _ do
       assert {:error, :user_does_not_exist} = ExBanking.deposit("fake", 50.20, "TL")
     end
 
-    test "it should return to many request to user", %{user_name: user_name} do
-      create_load(user_name, 20)
-      assert {:error, :too_many_requests_to_user} = ExBanking.deposit(user_name, 50.20, "TL")
+    test "it should return to many request to user", %{user: user} do
+      create_load(user, 20)
+      assert {:error, :too_many_requests_to_user} = ExBanking.deposit(user, 50.20, "TL")
     end
   end
 
@@ -65,35 +65,35 @@ defmodule ExBankingTest do
     setup do
       :ok = ExBanking.create_user(@user)
       {:ok, _} = ExBanking.deposit(@user, 100, @currency_usd)
-      %{user_name: @user}
+      %{user: @user}
     end
 
-    test "it should withdraw", %{user_name: user_name} do
-      assert {:ok, 39.90} = ExBanking.withdraw(user_name, 60.10, @currency_usd)
-      assert {:ok, 39.00} = ExBanking.withdraw(user_name, 0.90, @currency_usd)
+    test "it should withdraw", %{user: user} do
+      assert {:ok, 39.90} = ExBanking.withdraw(user, 60.10, @currency_usd)
+      assert {:ok, 39.00} = ExBanking.withdraw(user, 0.90, @currency_usd)
     end
 
-    test "it should return not enough money", %{user_name: user_name} do
-      assert {:error, :not_enough_money} = ExBanking.withdraw(user_name, 250.10, @currency_usd)
+    test "it should return not enough money", %{user: user} do
+      assert {:error, :not_enough_money} = ExBanking.withdraw(user, 250.10, @currency_usd)
     end
 
-    test "it should return wrong arguments", %{user_name: user_name} do
-      assert {:error, :wrong_arguments} = ExBanking.withdraw(user_name, "a", 1)
+    test "it should return wrong arguments", %{user: user} do
+      assert {:error, :wrong_arguments} = ExBanking.withdraw(user, "a", 1)
     end
 
     test "it should return wrong arguments when amount is below than zero", %{
-      user_name: user_name
+      user: user
     } do
-      assert {:error, :wrong_arguments} = ExBanking.withdraw(user_name, -10, @currency_usd)
+      assert {:error, :wrong_arguments} = ExBanking.withdraw(user, -10, @currency_usd)
     end
 
     test "it should return user does not exist", _ do
       assert {:error, :user_does_not_exist} = ExBanking.withdraw("fake", 50.20, "TL")
     end
 
-    test "it should return to many request to user", %{user_name: user_name} do
-      create_load(user_name, 20)
-      assert {:error, :too_many_requests_to_user} = ExBanking.withdraw(user_name, 50.20, "TL")
+    test "it should return to many request to user", %{user: user} do
+      create_load(user, 20)
+      assert {:error, :too_many_requests_to_user} = ExBanking.withdraw(user, 50.20, "TL")
     end
   end
 
@@ -103,32 +103,32 @@ defmodule ExBankingTest do
       {:ok, _} = ExBanking.deposit(@user, 100.05, @currency_tl)
       {:ok, _} = ExBanking.deposit(@user, 39.99, @currency_usd)
 
-      %{user_name: @user}
+      %{user: @user}
     end
 
-    test "it should get_balance TL", %{user_name: user_name} do
-      assert {:ok, 100.05} = ExBanking.get_balance(user_name, @currency_tl)
+    test "it should get_balance TL", %{user: user} do
+      assert {:ok, 100.05} = ExBanking.get_balance(user, @currency_tl)
     end
 
-    test "it should get_balance USD", %{user_name: user_name} do
-      assert {:ok, 39.99} = ExBanking.get_balance(user_name, @currency_usd)
+    test "it should get_balance USD", %{user: user} do
+      assert {:ok, 39.99} = ExBanking.get_balance(user, @currency_usd)
     end
 
-    test "it should return wrong arguments", %{user_name: user_name} do
-      assert {:error, :wrong_arguments} = ExBanking.get_balance(user_name, 1)
+    test "it should return wrong arguments", %{user: user} do
+      assert {:error, :wrong_arguments} = ExBanking.get_balance(user, 1)
     end
 
     test "it should return user does not exist", _ do
       assert {:error, :user_does_not_exist} = ExBanking.get_balance("fake", @currency_tl)
     end
 
-    test "it should return zero when currency not exist", %{user_name: user_name} do
-      assert {:ok, 0.0} = ExBanking.get_balance(user_name, "euro")
+    test "it should return zero when currency not exist", %{user: user} do
+      assert {:ok, 0.0} = ExBanking.get_balance(user, "euro")
     end
 
-    test "it should return to many request to user", %{user_name: user_name} do
-      create_load(user_name, 20)
-      assert {:error, :too_many_requests_to_user} = ExBanking.get_balance(user_name, @currency_tl)
+    test "it should return to many request to user", %{user: user} do
+      create_load(user, 20)
+      assert {:error, :too_many_requests_to_user} = ExBanking.get_balance(user, @currency_tl)
     end
   end
 
@@ -180,5 +180,5 @@ defmodule ExBankingTest do
     end
   end
 
-  defp create_load(user_name, message_count), do: Broker.increase(user_name, message_count)
+  defp create_load(user, message_count), do: Broker.increase(user, message_count)
 end
