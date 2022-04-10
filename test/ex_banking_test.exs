@@ -1,7 +1,7 @@
 defmodule ExBankingTest do
   use ExUnit.Case
   doctest ExBanking
-  alias ExBanking.Otp.{UserSupervisor, Registry}
+  alias ExBanking.Otp.{UserSupervisor, UserRegistry}
 
   @user "test_user"
   @currency_tl "TL"
@@ -10,7 +10,7 @@ defmodule ExBankingTest do
 
   setup do
     on_exit(fn ->
-      Registry.unregister_records()
+      UserRegistry.unregister_records()
       UserSupervisor.termine_all()
     end)
   end
@@ -195,5 +195,5 @@ defmodule ExBankingTest do
   defp increase_load(user),
     do:
       @waiting_operation_count !=
-        Registry.increase_operation_count(user, @waiting_operation_count)
+        UserRegistry.increase_operation_count(user, @waiting_operation_count)
 end

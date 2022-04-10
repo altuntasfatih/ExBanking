@@ -1,6 +1,5 @@
 defmodule ExBanking.Context.UserContext do
-  alias ExBanking.Otp.{UserSupervisor, UserServer, Registry}
-  alias ExBanking.Model.User
+  alias ExBanking.{Otp.UserSupervisor, Otp.UserServer, Otp.UserRegistry, Model.User}
 
   @operation_limit Application.compile_env(:ex_banking, :operion_count_limit)
 
@@ -29,6 +28,7 @@ defmodule ExBanking.Context.UserContext do
   def send(from_user, to_user, amount, currency) do
     with {:from, {:ok, from_pid}} <- {:from, look_up(from_user)},
          {:to, {:ok, to_pid}} <- {:to, look_up(to_user)} do
+      increase_operation_count([from_user, to_user])
       UserServer.send_money(from_pid, to_pid, amount, currency)
     else
       {:from, {:error, :user_does_not_exist}} ->
@@ -58,7 +58,10 @@ defmodule ExBanking.Context.UserContext do
   defp look_up({:ok, {_, pid, count}}) when count < @operation_limit, do: {:ok, pid}
   defp look_up({:ok, _}), do: {:error, :too_many_requests_to_user}
   defp look_up({:error, :process_is_not_alive}), do: {:error, :user_does_not_exist}
-  defp look_up(user), do: Registry.look_up(user) |> look_up()
+  defp look_up(user), do: UserRegistry.look_up(user) |> look_up()
 
-  defp increase_operation_count(user), do: Registry.increase_operation_count(user)
+  defp increase_operation_count(users) when is_list(users),
+    do: Enum.each(users, &UserRegistry.increase_operation_count(&1))
+
+  defp increase_operation_count(user), do: UserRegistry.increase_operation_count(user)
 end

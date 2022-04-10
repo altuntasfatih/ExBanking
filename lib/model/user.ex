@@ -4,6 +4,7 @@ defmodule ExBanking.Model.User do
 
   alias __MODULE__
 
+  @precison 2
   @initial_balance 0.00
 
   @type t :: %User{
@@ -15,7 +16,7 @@ defmodule ExBanking.Model.User do
 
   @spec deposit(user :: User.t(), amount :: number(), currency :: String.t()) :: {:ok, User.t()}
   def deposit(%User{accounts: accounts} = user, amount, currency) do
-    amount = Util.round(amount)
+    amount = round_amount(amount)
     user = %{user | accounts: Map.update(accounts, currency, amount, &(&1 + amount))}
     {:ok, user}
   end
@@ -24,7 +25,7 @@ defmodule ExBanking.Model.User do
           {:ok, User.t()} | {:error, :not_enough_money}
   def withdraw(%User{accounts: accounts} = user, amount, currency) do
     if enough?(accounts, amount, currency) do
-      amount = Util.round(amount)
+      amount = round_amount(amount)
       user = %{user | accounts: Map.update(accounts, currency, amount, &(&1 - amount))}
 
       {:ok, user}
@@ -42,4 +43,8 @@ defmodule ExBanking.Model.User do
     do: Map.get(accounts, currency, @initial_balance) |> enough?(amount)
 
   defp enough?(balance, requested_amount), do: balance > requested_amount
+
+  @spec round_amount(number()) :: float
+  defp round_amount(amount) when is_float(amount), do: Float.round(amount, @precison)
+  defp round_amount(amount) when is_number(amount), do: amount / 1.0
 end

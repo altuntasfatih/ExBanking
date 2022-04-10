@@ -1,7 +1,7 @@
 defmodule ExBanking.Application do
   @moduledoc false
   use Application
-  alias ExBanking.Otp.{UserSupervisor, Registry}
+  alias ExBanking.Otp.{UserSupervisor, UserRegistry}
 
   @impl true
   def start(_type, _args) do
@@ -16,6 +16,6 @@ defmodule ExBanking.Application do
   end
 
   defp children() do
-    [{UserSupervisor, :ok}, {Registry, :ok}]
+    [{UserSupervisor, :ok}, {UserRegistry, :ok}]
   end
 end

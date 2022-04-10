@@ -5,19 +5,19 @@ defmodule ExBanking.Model.UserTest do
   @user_name "Test"
 
   test "it should create user" do
-    assert User.new(@user_name) == %User{accounts: %{}, name: @user_name}
+    assert %User{accounts: %{}, name: @user_name} = User.new(@user_name)
   end
 
   test "it should deposit" do
     amount = 101.10
     currency = "TL"
+    user = User.new(@user_name)
 
-    assert User.new(@user_name) |> User.deposit(amount, currency) ==
-             {:ok,
-              %User{
-                accounts: %{"TL" => 101.1},
-                name: "Test"
-              }}
+    assert {:ok,
+            %User{
+              accounts: %{"TL" => 101.1},
+              name: "Test"
+            }} = User.deposit(user, amount, currency)
   end
 
   describe "withdraw/3" do
@@ -34,26 +34,25 @@ defmodule ExBanking.Model.UserTest do
       amount = 101.10
       currency = "TL"
 
-      assert User.withdraw(user, amount, currency) ==
-               {:ok,
-                %User{
-                  accounts: %{"TL" => 149.0, "$" => 95.02},
-                  name: "Test"
-                }}
+      assert {:ok,
+              %User{
+                accounts: %{"TL" => 149.0, "$" => 95.02},
+                name: "Test"
+              }} = User.withdraw(user, amount, currency)
     end
 
     test "it should return not enough money when account does not exist", %{user: user} do
       amount = 101.10
       currency = "euro"
 
-      assert User.withdraw(user, amount, currency) == {:error, :not_enough_money}
+      assert {:error, :not_enough_money} = User.withdraw(user, amount, currency)
     end
 
     test "it should return not_enough_money ", %{user: user} do
       amount = 300.10
       currency = "TL"
 
-      assert User.withdraw(user, amount, currency) == {:error, :not_enough_money}
+      assert {:error, :not_enough_money} = User.withdraw(user, amount, currency)
     end
   end
 
@@ -69,7 +68,7 @@ defmodule ExBanking.Model.UserTest do
 
     test "it should get_balance", %{user: user} do
       currency = "TL"
-      assert User.get_balance(user, currency) == {:ok, 250.1}
+      assert {:ok, 250.1} = User.get_balance(user, currency)
     end
   end
 end

@@ -2,8 +2,7 @@ defmodule ExBanking.Otp.UserServer do
   use GenServer
   require Logger
 
-  alias ExBanking.Model.User
-  alias ExBanking.Otp.Registry
+  alias ExBanking.{Model.User, Otp.UserRegistry}
 
   @spec start_link(User.t()) :: :ignore | {:error, any} | {:ok, pid}
   def start_link(%User{} = user) do
@@ -82,14 +81,15 @@ defmodule ExBanking.Otp.UserServer do
   def withdraw(pid, amount, currency) when is_pid(pid),
     do: GenServer.call(pid, {:withdraw, amount, currency})
 
-  defp decrease_operation_count(user_name), do: Registry.decrease_operation_count(user_name)
+  defp decrease_operation_count(user_name),
+    do: UserRegistry.decrease_operation_count(user_name)
 
   defp register(user_name) do
     Process.flag(:trap_exit, true)
-    Registry.register(self(), user_name)
+    UserRegistry.register(self(), user_name)
   end
 
-  defp unregister(user_name), do: Registry.unregister(user_name)
+  defp unregister(user_name), do: UserRegistry.unregister(user_name)
 
   def child_spec(opts) do
     %{

@@ -1,4 +1,4 @@
-defmodule ExBanking.Otp.Registry do
+defmodule ExBanking.Otp.UserRegistry do
   @table_name :ex_banking
   @type process_registry ::
           {key :: String.t(), pid :: pid(), operation_count :: non_neg_integer()}

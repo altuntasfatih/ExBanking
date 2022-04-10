@@ -1,14 +1,13 @@
 defmodule ExBanking.Otp.UserServerTest do
   use ExUnit.Case
-  alias ExBanking.Otp.{UserServer, Registry}
-  alias ExBanking.Model.User
+  alias ExBanking.{Otp.UserServer, Otp.UserRegistry, Model.User}
 
   @user_name "test"
   @currency "TL"
 
   setup do
     on_exit(fn ->
-      Registry.unregister_records()
+      UserRegistry.unregister_records()
     end)
   end
 
