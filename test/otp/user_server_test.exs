@@ -1,15 +1,9 @@
 defmodule ExBanking.Otp.UserServerTest do
   use ExUnit.Case
-  alias ExBanking.{Otp.UserServer, Otp.UserRegistry, Model.User}
+  alias ExBanking.{Otp.UserServer, Model.User}
 
   @user_name "test"
   @currency "TL"
-
-  setup do
-    on_exit(fn ->
-      UserRegistry.unregister_records()
-    end)
-  end
 
   describe "start_link/1" do
     test "it should create user" do

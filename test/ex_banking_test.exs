@@ -1,7 +1,7 @@
 defmodule ExBankingTest do
   use ExUnit.Case
   doctest ExBanking
-  alias ExBanking.Otp.{UserSupervisor, UserRegistry}
+  alias ExBanking.Otp.{UserSupervisor, UserRegistry, UserServer}
 
   @user "test_user"
   @currency_tl "TL"
@@ -10,7 +10,6 @@ defmodule ExBankingTest do
 
   setup do
     on_exit(fn ->
-      UserRegistry.unregister_records()
       UserSupervisor.termine_all()
     end)
   end
@@ -192,8 +191,10 @@ defmodule ExBankingTest do
     end
   end
 
-  defp increase_load(user),
-    do:
-      @waiting_operation_count !=
-        UserRegistry.increase_operation_count(user, @waiting_operation_count)
+  defp increase_load(user_name) do
+    {:ok, pid} = UserRegistry.where_is({UserServer, user_name})
+
+    :ok !=
+      Enum.each(1..@waiting_operation_count, fn _ -> Process.send(pid, {:sleep, 2000}, []) end)
+  end
 end
