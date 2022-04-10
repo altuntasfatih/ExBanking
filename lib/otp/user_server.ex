@@ -39,10 +39,10 @@ defmodule ExBanking.Otp.UserServer do
   end
 
   @impl true
-  def handle_call({:send_money, receiver_pid, amount, currency}, _from, user) do
+  def handle_call({:send_money, to_pid, amount, currency}, _from, user) do
     with {:ok, updated_user} <- User.withdraw(user, amount, currency),
          {:ok, current_balance} = User.get_balance(updated_user, currency),
-         {:ok, to_user_balance} <- receive_money(receiver_pid, amount, currency) do
+         {:ok, to_user_balance} <- receive_money(to_pid, amount, currency) do
       {:reply, {:ok, current_balance, to_user_balance}, updated_user, {:continue, :decrease}}
     else
       err -> {:reply, err, user, {:continue, :decrease}}
@@ -70,8 +70,8 @@ defmodule ExBanking.Otp.UserServer do
   def receive_money(pid, amount, currency) when is_pid(pid),
     do: GenServer.call(pid, {:receive_money, amount, currency})
 
-  def send_money(pid, receiver_pid, amount, currency) when is_pid(pid),
-    do: GenServer.call(pid, {:send_money, receiver_pid, amount, currency})
+  def send_money(pid, to_pid, amount, currency) when is_pid(pid),
+    do: GenServer.call(pid, {:send_money, to_pid, amount, currency})
 
   def get_balance(pid, currency) when is_pid(pid),
     do: GenServer.call(pid, {:get_balance, currency})

@@ -26,21 +26,21 @@ defmodule ExBanking.Context.UserContext do
     proxy(user, &UserServer.get_balance(&1, currency))
   end
 
-  def send(sender_user, receiver_user, amount, currency) do
-    with {:sender?, {:ok, sender_pid}} <- {:sender?, look_up(sender_user)},
-         {:receiver?, {:ok, receiver_pid}} <- {:receiver?, look_up(receiver_user)} do
-      UserServer.send_money(sender_pid, receiver_pid, amount, currency)
+  def send(from_user, to_user, amount, currency) do
+    with {:from, {:ok, from_pid}} <- {:from, look_up(from_user)},
+         {:to, {:ok, to_pid}} <- {:to, look_up(to_user)} do
+      UserServer.send_money(from_pid, to_pid, amount, currency)
     else
-      {:sender?, {:error, :user_does_not_exist}} ->
+      {:from, {:error, :user_does_not_exist}} ->
         {:error, :sender_does_not_exist}
 
-      {:receiver?, {:error, :user_does_not_exist}} ->
-        {:error, :receiver_does_not_exist}
-
-      {:sender?, {:error, :too_many_requests_to_user}} ->
+      {:from, {:error, :too_many_requests_to_user}} ->
         {:error, :too_many_requests_to_sender}
 
-      {:receiver?, {:error, :too_many_requests_to_user}} ->
+      {:to, {:error, :user_does_not_exist}} ->
+        {:error, :receiver_does_not_exist}
+
+      {:to, {:error, :too_many_requests_to_user}} ->
         {:error, :too_many_requests_to_receiver}
 
       err ->
@@ -48,7 +48,7 @@ defmodule ExBanking.Context.UserContext do
     end
   end
 
-  defp proxy(user, message) do
+  defp proxy(user, message) when is_binary(user) do
     with {:ok, pid} <- look_up(user) do
       increase_operation_count(user)
       message.(pid)
