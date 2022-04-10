@@ -12,7 +12,7 @@ defmodule ExBanking do
           | {:error, :wrong_arguments | :user_does_not_exist | :too_many_requests_to_user}
   def deposit(user, amount, currency)
       when is_binary(user) and is_money(amount) and is_binary(currency),
-      do: UserContext.deposit(user, Util.round(amount), currency)
+      do: UserContext.deposit(user, amount, currency)
 
   def deposit(_, _, _), do: {:error, :wrong_arguments}
 
@@ -25,7 +25,7 @@ defmodule ExBanking do
              | :too_many_requests_to_user}
   def withdraw(user, amount, currency)
       when is_binary(user) and is_money(amount) and is_binary(currency),
-      do: UserContext.withdraw(user, Util.round(amount), currency)
+      do: UserContext.withdraw(user, amount, currency)
 
   def withdraw(_, _, _), do: {:error, :wrong_arguments}
 
@@ -54,7 +54,7 @@ defmodule ExBanking do
   def send(from_user, to_user, amount, currency)
       when is_binary(from_user) and is_binary(to_user) and is_money(amount) and
              is_binary(currency),
-      do: UserContext.send(from_user, to_user, Util.round(amount), currency)
+      do: UserContext.send(from_user, to_user, amount, currency)
 
   def send(_, _, _, _), do: {:error, :wrong_arguments}
 end
