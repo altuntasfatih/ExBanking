@@ -162,6 +162,12 @@ defmodule ExBankingTest do
       assert {:error, :wrong_arguments} = ExBanking.send(from, to, -30.0, @currency_tl)
     end
 
+    test "it should return wrong arguments when sender and receiver is same", %{
+      from: from
+    } do
+      assert {:error, :wrong_arguments} = ExBanking.send(from, from, 30.0, @currency_tl)
+    end
+
     test "it should return receiver does not exist", %{from: from, to: _} do
       assert {:error, :receiver_does_not_exist} = ExBanking.send(from, "fake", 30.0, @currency_tl)
     end

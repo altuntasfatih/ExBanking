@@ -1,6 +1,6 @@
 defmodule ExBanking.Otp.UserServerTest do
   use ExUnit.Case
-  alias ExBanking.Otp.{UserServer, Registry, UserSupervisor}
+  alias ExBanking.Otp.{UserServer, Registry}
   alias ExBanking.Model.User
 
   @user_name "test"
