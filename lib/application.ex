@@ -1,12 +1,10 @@
 defmodule ExBanking.Application do
   @moduledoc false
   use Application
-  alias ExBanking.Otp.{UserSupervisor, Broker}
+  alias ExBanking.Otp.{UserSupervisor, Registry}
 
   @impl true
   def start(_type, _args) do
-    :ex_banking = Broker.create_table()
-
     opts = [
       strategy: :one_for_one,
       max_restarts: 10,
@@ -14,11 +12,10 @@ defmodule ExBanking.Application do
       name: ExBanking.BaseSupervisor
     ]
 
-    Supervisor.start_link(
-      [
-        {UserSupervisor, :ok}
-      ],
-      opts
-    )
+    Supervisor.start_link(children(), opts)
+  end
+
+  defp children() do
+    [{UserSupervisor, :ok}, {Registry, :ok}]
   end
 end

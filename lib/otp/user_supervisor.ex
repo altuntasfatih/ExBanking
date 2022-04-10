@@ -1,14 +1,20 @@
 defmodule ExBanking.Otp.UserSupervisor do
   use DynamicSupervisor
-  alias ExBanking.Otp.UserServer
+  alias ExBanking.Otp.{UserServer, Registry}
 
   def start_link(:ok) do
     DynamicSupervisor.start_link(__MODULE__, :ok, name: __MODULE__)
   end
 
+  @spec create_user(User.t()) :: {:error, {:already_started, pid}} | {:ok, pid}
   def create_user(user) do
-    child_spec = {UserServer, user}
-    DynamicSupervisor.start_child(__MODULE__, child_spec)
+    case Registry.look_up(user.name) do
+      {:error, :process_is_not_alive} ->
+        DynamicSupervisor.start_child(__MODULE__, {UserServer, user})
+
+      {:ok, {_, pid, _}} ->
+        {:error, {:already_started, pid}}
+    end
   end
 
   def init(:ok) do
@@ -34,5 +40,14 @@ defmodule ExBanking.Otp.UserSupervisor do
   def termine_all() do
     children()
     |> Enum.map(fn {_, pid, _, _} -> termine_child(pid) end)
+  end
+
+  def child_spec(opts) do
+    %{
+      id: __MODULE__,
+      start: {__MODULE__, :start_link, [opts]},
+      type: :supervisor,
+      restart: :transient
+    }
   end
 end

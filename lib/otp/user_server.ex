@@ -1,20 +1,21 @@
 defmodule ExBanking.Otp.UserServer do
   use GenServer
+  require Logger
+
   alias ExBanking.Model.User
-  alias ExBanking.Otp.Broker
+  alias ExBanking.Otp.Registry
 
   @spec start_link(User.t()) :: :ignore | {:error, any} | {:ok, pid}
   def start_link(%User{} = user) do
-    case Broker.look_up(user.name) do
-      {:error, :process_is_not_alive} -> GenServer.start_link(__MODULE__, user)
-      {:ok, {_, pid, _}} -> {:error, {:already_started, pid}}
-    end
+    GenServer.start_link(__MODULE__, user)
   end
 
   @impl true
-  def init(state) do
-    true = Broker.register(self(), state.name)
-    {:ok, state}
+  def init(%User{} = user) do
+    Logger.info("Start user: #{inspect(user)}")
+    register(user.name)
+
+    {:ok, user}
   end
 
   @impl true
@@ -59,6 +60,13 @@ defmodule ExBanking.Otp.UserServer do
     {:noreply, state}
   end
 
+  @impl true
+  def terminate(reason, %User{name: user_name} = state) do
+    Logger.info("Terminates user:#{inspect(state)}, reason: #{inspect(reason)}")
+    unregister(user_name)
+    state
+  end
+
   def transfer_money(user, amount, currency),
     do: via(user, &GenServer.call(&1, {:receive_money, amount, currency}))
 
@@ -87,11 +95,26 @@ defmodule ExBanking.Otp.UserServer do
     do: via(user, &GenServer.call(&1, {:withdraw, amount, currency}))
 
   def via(user_name, callback) when is_binary(user_name),
-    do: Broker.look_up(user_name) |> via(callback)
+    do: Registry.look_up(user_name) |> via(callback)
 
   def via({:ok, {_user_name, pid, _load}}, callback) when is_pid(pid), do: callback.(pid)
   def via(err, _), do: err
 
-  @spec decrease_operation_count(binary()) :: integer
-  defp decrease_operation_count(user_name), do: Broker.decrease(user_name)
+  defp decrease_operation_count(user_name), do: Registry.decrease_operation_count(user_name)
+
+  defp register(user_name) do
+    Process.flag(:trap_exit, true)
+    Registry.register(self(), user_name)
+  end
+
+  defp unregister(user_name), do: Registry.unregister(user_name)
+
+  def child_spec(opts) do
+    %{
+      id: __MODULE__,
+      start: {__MODULE__, :start_link, [opts]},
+      type: :worker,
+      restart: :temporary
+    }
+  end
 end

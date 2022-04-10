@@ -1,13 +1,13 @@
 defmodule ExBanking.Otp.UserServerTest do
   use ExUnit.Case
-  alias ExBanking.Otp.{UserServer, Broker, UserSupervisor}
+  alias ExBanking.Otp.{UserServer, Registry, UserSupervisor}
   alias ExBanking.Model.User
 
   @user_name "test"
 
   setup do
     on_exit(fn ->
-      Broker.unregister_records()
+      Registry.unregister_records()
       UserSupervisor.termine_all()
     end)
   end

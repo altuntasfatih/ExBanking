@@ -1,16 +1,16 @@
 defmodule ExBankingTest do
   use ExUnit.Case
   doctest ExBanking
-  alias ExBanking.Otp.{UserSupervisor, Broker}
+  alias ExBanking.Otp.{UserSupervisor, Registry}
 
   @user "test_user"
   @currency_tl "TL"
   @currency_usd "USD"
-  @waiting_message_count 20
+  @waiting_operation_count 20
 
   setup do
     on_exit(fn ->
-      Broker.unregister_records()
+      Registry.unregister_records()
       UserSupervisor.termine_all()
     end)
   end
@@ -186,5 +186,8 @@ defmodule ExBankingTest do
     end
   end
 
-  defp increase_load(user), do: @waiting_message_count != Broker.increase(user, @waiting_message_count)
+  defp increase_load(user),
+    do:
+      @waiting_operation_count !=
+        Registry.increase_operation_count(user, @waiting_operation_count)
 end
