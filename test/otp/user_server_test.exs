@@ -4,11 +4,11 @@ defmodule ExBanking.Otp.UserServerTest do
   alias ExBanking.Model.User
 
   @user_name "test"
+  @currency "TL"
 
   setup do
     on_exit(fn ->
       Registry.unregister_records()
-      UserSupervisor.termine_all()
     end)
   end
 
@@ -24,9 +24,8 @@ defmodule ExBanking.Otp.UserServerTest do
       %{pid: pid}
     end
 
-    test "it should get_balance" do
-      currency = "TL"
-      assert UserServer.get_balance(@user_name, currency) == {:ok, 35.0}
+    test "it should get_balance", %{pid: pid} do
+      assert {:ok, 35.0} = UserServer.get_balance(pid, @currency)
     end
   end
 
@@ -36,48 +35,41 @@ defmodule ExBanking.Otp.UserServerTest do
       %{pid: pid}
     end
 
-    test "it should deposit" do
+    test "it should deposit", %{pid: pid} do
       currency = "TL"
-      assert UserServer.deposit(@user_name, 50.20, currency) == {:ok, 50.20}
+      assert {:ok, 50.20} == UserServer.deposit(pid, 50.20, currency)
     end
   end
 
   describe "withdraw/3" do
     setup do
-      {:ok, pid} = UserServer.start_link(%User{name: @user_name, accounts: %{"TL" => 35.0}})
+      {:ok, pid} = UserServer.start_link(%User{name: @user_name, accounts: %{"TL" => 35.00}})
       %{pid: pid}
     end
 
-    test "it should withdraw" do
-      currency = "TL"
-      assert UserServer.withdraw(@user_name, 30, currency) == {:ok, 5.0}
+    test "it should withdraw", %{pid: pid} do
+      assert {:ok, 1.60} = UserServer.withdraw(pid, 33.40, @currency)
     end
 
-    test "it should return not_enough_money" do
-      currency = "TL"
-      assert UserServer.withdraw(@user_name, 50, currency) == {:error, :not_enough_money}
+    test "it should return not_enough_money", %{pid: pid} do
+      assert {:error, :not_enough_money} = UserServer.withdraw(pid, 50, @currency)
     end
   end
 
   describe "send/4" do
     setup do
-      from = "a_user"
-      to = "b_user"
-      {:ok, _} = UserServer.start_link(%User{name: from, accounts: %{"TL" => 200.0}})
-      {:ok, _} = UserServer.start_link(%User{name: to, accounts: %{}})
-      %{from_user: from, to_user: to}
+      {:ok, from_pid} = UserServer.start_link(%User{name: "a", accounts: %{"TL" => 200.0}})
+      {:ok, to_pid} = UserServer.start_link(%User{name: "b", accounts: %{}})
+      %{from_pid: from_pid, to_user_pid: to_pid}
     end
 
-    test "it should send money", %{from_user: from, to_user: to} do
+    test "it should send money", %{from_pid: from, to_user_pid: to} do
       amount = 99.99
-      currency = "TL"
-      assert UserServer.send(from, to, amount, currency) == {:ok, 100.01, 99.99}
+      assert {:ok, 100.01, 99.99} = UserServer.send_money(from, to, amount, @currency)
     end
 
-    test "it should return not enough money", %{from_user: from, to_user: to} do
-      amount = 300.99
-      currency = "TL"
-      assert UserServer.send(from, to, amount, currency) == {:error, :not_enough_money}
+    test "it should return not enough money", %{from_pid: from, to_user_pid: to} do
+      assert {:error, :not_enough_money} = UserServer.send_money(from, to, 300.99, @currency)
     end
   end
 end

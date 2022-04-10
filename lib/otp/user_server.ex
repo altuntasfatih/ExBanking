@@ -39,10 +39,10 @@ defmodule ExBanking.Otp.UserServer do
   end
 
   @impl true
-  def handle_call({:send_money, to_user, amount, currency}, _from, user) do
+  def handle_call({:send_money, receiver_pid, amount, currency}, _from, user) do
     with {:ok, updated_user} <- User.withdraw(user, amount, currency),
          {:ok, current_balance} = User.get_balance(updated_user, currency),
-         {:ok, to_user_balance} <- transfer_money(to_user, amount, currency) do
+         {:ok, to_user_balance} <- receive_money(receiver_pid, amount, currency) do
       {:reply, {:ok, current_balance, to_user_balance}, updated_user, {:continue, :decrease}}
     else
       err -> {:reply, err, user, {:continue, :decrease}}
@@ -67,38 +67,20 @@ defmodule ExBanking.Otp.UserServer do
     state
   end
 
-  def transfer_money(user, amount, currency),
-    do: via(user, &GenServer.call(&1, {:receive_money, amount, currency}))
+  def receive_money(pid, amount, currency) when is_pid(pid),
+    do: GenServer.call(pid, {:receive_money, amount, currency})
 
-  def send(pid, to_user, amount, currency) when is_pid(pid),
-    do: GenServer.call(pid, {:send_money, to_user, amount, currency})
-
-  def send(from_user, to_user, amount, currency),
-    do: via(from_user, &GenServer.call(&1, {:send_money, to_user, amount, currency}))
+  def send_money(pid, receiver_pid, amount, currency) when is_pid(pid),
+    do: GenServer.call(pid, {:send_money, receiver_pid, amount, currency})
 
   def get_balance(pid, currency) when is_pid(pid),
     do: GenServer.call(pid, {:get_balance, currency})
 
-  def get_balance(user, currency),
-    do: via(user, &GenServer.call(&1, {:get_balance, currency}))
-
   def deposit(pid, amount, currency) when is_pid(pid),
     do: GenServer.call(pid, {:deposit, amount, currency})
 
-  def deposit(user, amount, currency),
-    do: via(user, &GenServer.call(&1, {:deposit, amount, currency}))
-
   def withdraw(pid, amount, currency) when is_pid(pid),
     do: GenServer.call(pid, {:withdraw, amount, currency})
-
-  def withdraw(user, amount, currency),
-    do: via(user, &GenServer.call(&1, {:withdraw, amount, currency}))
-
-  def via(user_name, callback) when is_binary(user_name),
-    do: Registry.look_up(user_name) |> via(callback)
-
-  def via({:ok, {_user_name, pid, _load}}, callback) when is_pid(pid), do: callback.(pid)
-  def via(err, _), do: err
 
   defp decrease_operation_count(user_name), do: Registry.decrease_operation_count(user_name)
 

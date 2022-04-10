@@ -28,8 +28,8 @@ defmodule ExBanking.Context.UserContext do
 
   def send(sender_user, receiver_user, amount, currency) do
     with {:sender?, {:ok, sender_pid}} <- {:sender?, look_up(sender_user)},
-         {:receiver?, {:ok, _}} <- {:receiver?, look_up(receiver_user)} do
-      UserServer.send(sender_pid, receiver_user, amount, currency)
+         {:receiver?, {:ok, receiver_pid}} <- {:receiver?, look_up(receiver_user)} do
+      UserServer.send_money(sender_pid, receiver_pid, amount, currency)
     else
       {:sender?, {:error, :user_does_not_exist}} ->
         {:error, :sender_does_not_exist}
