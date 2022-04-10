@@ -1,18 +1,18 @@
 defmodule ExBanking.Otp.UserSupervisor do
   use DynamicSupervisor
-  alias ExBanking.Otp.{UserServer, UserRegistry}
+  alias ExBanking.{Otp.UserServer, Otp.UserRegistry, Model.User}
 
   def start_link(:ok) do
     DynamicSupervisor.start_link(__MODULE__, :ok, name: __MODULE__)
   end
 
   @spec create_user(User.t()) :: {:error, {:already_started, pid}} | {:ok, pid}
-  def create_user(user) do
-    case UserRegistry.look_up(user.name) do
+  def create_user(%User{} = user) do
+    case UserRegistry.where_is({UserServer, user.name}) do
       {:error, :process_is_not_alive} ->
         DynamicSupervisor.start_child(__MODULE__, {UserServer, user})
 
-      {:ok, {_, pid, _}} ->
+      {:ok, pid} ->
         {:error, {:already_started, pid}}
     end
   end

@@ -28,7 +28,6 @@ defmodule ExBanking.Context.UserContext do
   def send(from_user, to_user, amount, currency) do
     with {:from, {:ok, from_pid}} <- {:from, look_up(from_user)},
          {:to, {:ok, to_pid}} <- {:to, look_up(to_user)} do
-      increase_operation_count([from_user, to_user])
       UserServer.send_money(from_pid, to_pid, amount, currency)
     else
       {:from, {:error, :user_does_not_exist}} ->
@@ -50,18 +49,22 @@ defmodule ExBanking.Context.UserContext do
 
   defp proxy(user, message) when is_binary(user) do
     with {:ok, pid} <- look_up(user) do
-      increase_operation_count(user)
       message.(pid)
     end
   end
 
-  defp look_up({:ok, {_, pid, count}}) when count < @operation_limit, do: {:ok, pid}
-  defp look_up({:ok, _}), do: {:error, :too_many_requests_to_user}
-  defp look_up({:error, :process_is_not_alive}), do: {:error, :user_does_not_exist}
-  defp look_up(user), do: UserRegistry.look_up(user) |> look_up()
+  def look_up(user_name) do
+    with {:ok, pid} <- UserRegistry.where_is({UserServer, user_name}),
+         {:available?, true} <- {:available?, available?(pid)} do
+      {:ok, pid}
+    else
+      {:available?, false} -> {:error, :too_many_requests_to_user}
+      {:error, :process_is_not_alive} -> {:error, :user_does_not_exist}
+    end
+  end
 
-  defp increase_operation_count(users) when is_list(users),
-    do: Enum.each(users, &UserRegistry.increase_operation_count(&1))
+  defp available?({:message_queue_len, size}), do: size < @operation_limit
 
-  defp increase_operation_count(user), do: UserRegistry.increase_operation_count(user)
+  defp available?(pid) when is_pid(pid),
+    do: Process.info(pid, :message_queue_len) |> available?()
 end
