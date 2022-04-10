@@ -2,7 +2,7 @@ defmodule ExBanking.Context.UserContext do
   alias ExBanking.Otp.{UserSupervisor, UserServer, Registry}
   alias ExBanking.Model.User
 
-  @max_operation_count_per_user 10
+  @operation_limit Application.compile_env(:ex_banking, :operion_count_limit)
 
   @spec create_user(binary) :: :ok | {:error, :user_already_exists}
   def create_user(user) do
@@ -55,7 +55,7 @@ defmodule ExBanking.Context.UserContext do
     end
   end
 
-  defp look_up({:ok, {_, pid, count}}) when count < @max_operation_count_per_user, do: {:ok, pid}
+  defp look_up({:ok, {_, pid, count}}) when count < @operation_limit, do: {:ok, pid}
   defp look_up({:ok, _}), do: {:error, :too_many_requests_to_user}
   defp look_up({:error, :process_is_not_alive}), do: {:error, :user_does_not_exist}
   defp look_up(user), do: Registry.look_up(user) |> look_up()

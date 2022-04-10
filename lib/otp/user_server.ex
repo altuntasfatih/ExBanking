@@ -62,7 +62,7 @@ defmodule ExBanking.Otp.UserServer do
 
   @impl true
   def terminate(reason, %User{name: user_name} = state) do
-    Logger.info("Terminates user:#{inspect(state)}, reason: #{inspect(reason)}")
+    Logger.info("Terminate user:#{inspect(state)}, reason: #{inspect(reason)}")
     unregister(user_name)
     state
   end
