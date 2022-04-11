@@ -4,7 +4,6 @@ defmodule ExBankingTest do
 
   alias ExBanking.Otp.{UserSupervisor, UserRegistry, UserServer}
 
-  @user "test_user"
   @currency_tl "TL"
   @currency_usd "USD"
   @waiting_operation_count 20
@@ -15,19 +14,22 @@ defmodule ExBankingTest do
 
   describe "create_user/1" do
     test "it should create user" do
-      assert :ok = ExBanking.create_user(@user)
+      assert :ok = ExBanking.create_user(random_user())
     end
 
     test "it should return user already exist user" do
-      :ok = ExBanking.create_user(@user)
-      assert {:error, :user_already_exists} = ExBanking.create_user(@user)
+      user = random_user()
+
+      assert :ok = ExBanking.create_user(user)
+      assert {:error, :user_already_exists} = ExBanking.create_user(user)
     end
   end
 
   describe "deposit/3" do
     setup do
-      user = "deposit_user"
+      user = random_user()
       :ok = ExBanking.create_user(user)
+
       %{user: user}
     end
 
@@ -64,9 +66,10 @@ defmodule ExBankingTest do
 
   describe "withdraw/3" do
     setup do
-      user = "withdraw_user"
+      user = random_user()
       :ok = ExBanking.create_user(user)
       {:ok, _} = ExBanking.deposit(user, 100, @currency_usd)
+
       %{user: user}
     end
 
@@ -102,7 +105,7 @@ defmodule ExBankingTest do
 
   describe "get_balance/2" do
     setup do
-      user = "get_balance_user"
+      user = random_user()
       :ok = ExBanking.create_user(user)
       {:ok, _} = ExBanking.deposit(user, 100.05, @currency_tl)
       {:ok, _} = ExBanking.deposit(user, 39.99, @currency_usd)
@@ -139,8 +142,8 @@ defmodule ExBankingTest do
 
   describe "send/4" do
     setup do
-      from = "sender"
-      to = "receiver"
+      from = random_user()
+      to = random_user()
       :ok = ExBanking.create_user(from)
       :ok = ExBanking.create_user(to)
       {:ok, _} = ExBanking.deposit(from, 100.00, @currency_tl)
@@ -195,8 +198,8 @@ defmodule ExBankingTest do
 
   describe "deadlock" do
     setup do
-      from = "multiple_sender"
-      to = "multiple_receiver"
+      from = random_user()
+      to = random_user()
       :ok = ExBanking.create_user(from)
       :ok = ExBanking.create_user(to)
       {:ok, _} = ExBanking.deposit(from, 10.0, @currency_tl)
@@ -233,4 +236,6 @@ defmodule ExBankingTest do
     :ok !=
       Enum.each(1..count, fn _ -> Process.send(pid, {:sleep, 2000}, []) end)
   end
+
+  defp random_user(), do: "user_" <> UUID.uuid4()
 end
