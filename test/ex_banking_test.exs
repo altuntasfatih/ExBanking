@@ -1,6 +1,7 @@
 defmodule ExBankingTest do
   use ExUnit.Case
-  doctest ExBanking
+  require Logger
+
   alias ExBanking.Otp.{UserSupervisor, UserRegistry, UserServer}
 
   @user "test_user"
@@ -191,10 +192,45 @@ defmodule ExBankingTest do
     end
   end
 
-  defp increase_load(user_name) do
+  describe "deadlock" do
+    setup do
+      from = "sender"
+      to = "receiver"
+      :ok = ExBanking.create_user(from)
+      :ok = ExBanking.create_user(to)
+      {:ok, _} = ExBanking.deposit(from, 10.0, @currency_tl)
+      {:ok, _} = ExBanking.deposit(to, 10.0, @currency_tl)
+      %{from: from, to: to}
+    end
+
+    test "it should support when two users try send money each other at same time", %{
+      from: from,
+      to: to
+    } do
+
+      Enum.to_list(0..9)
+      |> Enum.map(fn number ->
+        Task.async(fn ->
+          if rem(number, 2) == 0 do
+            {number, ExBanking.send(from, to, 1.0, @currency_tl)}
+          else
+            {number, ExBanking.send(to, from, 1.0, @currency_tl)}
+          end
+        end)
+      end)
+      |> Enum.each(fn task ->
+        assert {:ok,result} = Task.yield(task)
+      end)
+
+      assert {:ok, 10.0} = ExBanking.get_balance(from, @currency_tl)
+      assert {:ok, 10.0} = ExBanking.get_balance(to, @currency_tl)
+    end
+  end
+
+  defp increase_load(user_name, count \\ @waiting_operation_count) do
     {:ok, pid} = UserRegistry.where_is({UserServer, user_name})
 
     :ok !=
-      Enum.each(1..@waiting_operation_count, fn _ -> Process.send(pid, {:sleep, 2000}, []) end)
+      Enum.each(1..count, fn _ -> Process.send(pid, {:sleep, 2000}, []) end)
   end
 end
