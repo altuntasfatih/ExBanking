@@ -219,7 +219,7 @@ defmodule ExBankingTest do
         end)
       end)
       |> Enum.each(fn task ->
-        assert {:ok,result} = Task.yield(task)
+        assert {:ok,_result} = Task.yield(task)
       end)
 
       assert {:ok, 10.0} = ExBanking.get_balance(from, @currency_tl)
