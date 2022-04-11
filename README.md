@@ -1,5 +1,5 @@
 # ExBanking
-**It is a simple banking OTP application with Elixir**
+**It is a basic banking application with OTP and Elixir**
 
 There is no database.All of state is stored in process memory.Each user represented as a process.A user can have any number of different currency account.
 
@@ -11,16 +11,18 @@ Supported operations:
   * send
 
 There are two different implemantations in branches.
- * [counter-based-load-balancer](https://github.com/altuntasfatih/ExBanking/tree/counter-based-load-balancer)
+* [ets](https://github.com/altuntasfatih/ExBanking/tree/ets)
 
-   Process discovery is carrid out using Ets.
+  Process discovery and load balancing are carried out using custom registry implementation.
 
-   Load balancing is carrid out by a counter on Ets.
+  ` @type process_registry ::
+          {key :: String.t(), pid :: pid(), operation_count :: non_neg_integer()} `
 
- * [mailbox-size-based-load-balancer](https://github.com/altuntasfatih/ExBanking/tree/mailbox-size-based-load-balancer)
+  process_registry.t() is stored in ets table.   
 
-   Process discovery is carrid out using Registry.
+* [mailbox](https://github.com/altuntasfatih/ExBanking/tree/mailbox)
 
+   Process discovery is carrid out using Local Registry.
    Load balancing is carrid out by a Mailbox.size(Process.info(:message_queue_len))
 
- * main branch is same counter-based-load-balancer
+Main branch is same mailbox.
