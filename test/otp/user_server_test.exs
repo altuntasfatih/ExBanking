@@ -1,15 +1,9 @@
 defmodule ExBanking.Otp.UserServerTest do
   use ExUnit.Case
-  alias ExBanking.{Otp.UserServer, Otp.UserRegistry, Model.User}
+  alias ExBanking.{Otp.UserServer, Model.User}
 
   @user_name "test"
   @currency "TL"
-
-  setup do
-    on_exit(fn ->
-      UserRegistry.unregister_records()
-    end)
-  end
 
   describe "start_link/1" do
     test "it should create user" do
@@ -19,7 +13,7 @@ defmodule ExBanking.Otp.UserServerTest do
 
   describe "get_balance/2" do
     setup do
-      {:ok, pid} = UserServer.start_link(%User{name: @user_name, accounts: %{"TL" => 35.0}})
+      {:ok, pid} = create_user(@user_name, @currency, 35.0) |> UserServer.start_link()
       %{pid: pid}
     end
 
@@ -45,7 +39,7 @@ defmodule ExBanking.Otp.UserServerTest do
 
   describe "withdraw/3" do
     setup do
-      {:ok, pid} = UserServer.start_link(%User{name: @user_name, accounts: %{"TL" => 100.00}})
+      {:ok, pid} = create_user(@user_name, @currency, 100.0) |> UserServer.start_link()
       %{pid: pid}
     end
 
@@ -64,18 +58,24 @@ defmodule ExBanking.Otp.UserServerTest do
 
   describe "send/4" do
     setup do
-      {:ok, from_pid} = UserServer.start_link(%User{name: "a", accounts: %{"TL" => 200.0}})
-      {:ok, to_pid} = UserServer.start_link(%User{name: "b", accounts: %{}})
+      {:ok, from_pid} = create_user("a", @currency, 200.0) |> UserServer.start_link()
+      {:ok, to_pid} = create_user("b") |> UserServer.start_link()
       %{from_pid: from_pid, to_user_pid: to_pid}
     end
 
     test "it should send money", %{from_pid: from, to_user_pid: to} do
       amount = 99.99
-      assert {:ok, 100.01, 99.99} = UserServer.send_money(from, to, amount, @currency)
+
+      assert {:ok, 100.01, ^amount} = UserServer.send_money(from, to, amount, @currency)
     end
 
     test "it should return not enough money", %{from_pid: from, to_user_pid: to} do
       assert {:error, :not_enough_money} = UserServer.send_money(from, to, 300.99, @currency)
     end
   end
+
+  defp create_user(name), do: %User{name: name}
+
+  defp create_user(name, currency, amount),
+    do: %User{name: name, accounts: %{String.to_atom(currency) => amount}}
 end
