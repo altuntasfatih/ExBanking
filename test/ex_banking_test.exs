@@ -10,9 +10,7 @@ defmodule ExBankingTest do
   @waiting_operation_count 20
 
   setup do
-    on_exit(fn ->
-      UserSupervisor.termine_all()
-    end)
+    on_exit(fn -> UserSupervisor.termine_all() end)
   end
 
   describe "create_user/1" do
@@ -22,15 +20,15 @@ defmodule ExBankingTest do
 
     test "it should return user already exist user" do
       :ok = ExBanking.create_user(@user)
-
       assert {:error, :user_already_exists} = ExBanking.create_user(@user)
     end
   end
 
   describe "deposit/3" do
     setup do
-      :ok = ExBanking.create_user(@user)
-      %{user: @user}
+      user = "deposit_user"
+      :ok = ExBanking.create_user(user)
+      %{user: user}
     end
 
     test "it should deposit TL", %{user: user} do
@@ -66,9 +64,10 @@ defmodule ExBankingTest do
 
   describe "withdraw/3" do
     setup do
-      :ok = ExBanking.create_user(@user)
-      {:ok, _} = ExBanking.deposit(@user, 100, @currency_usd)
-      %{user: @user}
+      user = "withdraw_user"
+      :ok = ExBanking.create_user(user)
+      {:ok, _} = ExBanking.deposit(user, 100, @currency_usd)
+      %{user: user}
     end
 
     test "it should withdraw", %{user: user} do
@@ -103,11 +102,12 @@ defmodule ExBankingTest do
 
   describe "get_balance/2" do
     setup do
-      :ok = ExBanking.create_user(@user)
-      {:ok, _} = ExBanking.deposit(@user, 100.05, @currency_tl)
-      {:ok, _} = ExBanking.deposit(@user, 39.99, @currency_usd)
+      user = "get_balance_user"
+      :ok = ExBanking.create_user(user)
+      {:ok, _} = ExBanking.deposit(user, 100.05, @currency_tl)
+      {:ok, _} = ExBanking.deposit(user, 39.99, @currency_usd)
 
-      %{user: @user}
+      %{user: user}
     end
 
     test "it should get_balance TL", %{user: user} do
@@ -139,11 +139,12 @@ defmodule ExBankingTest do
 
   describe "send/4" do
     setup do
-      to = "to_user"
-      :ok = ExBanking.create_user(@user)
+      from = "sender"
+      to = "receiver"
+      :ok = ExBanking.create_user(from)
       :ok = ExBanking.create_user(to)
-      {:ok, _} = ExBanking.deposit(@user, 100.00, @currency_tl)
-      %{from: @user, to: to}
+      {:ok, _} = ExBanking.deposit(from, 100.00, @currency_tl)
+      %{from: from, to: to}
     end
 
     test "it should send money", %{from: from, to: to} do
@@ -194,8 +195,8 @@ defmodule ExBankingTest do
 
   describe "deadlock" do
     setup do
-      from = "sender"
-      to = "receiver"
+      from = "multiple_sender"
+      to = "multiple_receiver"
       :ok = ExBanking.create_user(from)
       :ok = ExBanking.create_user(to)
       {:ok, _} = ExBanking.deposit(from, 10.0, @currency_tl)
@@ -207,7 +208,6 @@ defmodule ExBankingTest do
       from: from,
       to: to
     } do
-
       Enum.to_list(0..9)
       |> Enum.map(fn number ->
         Task.async(fn ->
@@ -219,7 +219,7 @@ defmodule ExBankingTest do
         end)
       end)
       |> Enum.each(fn task ->
-        assert {:ok,_result} = Task.yield(task)
+        assert {:ok, _result} = Task.yield(task)
       end)
 
       assert {:ok, 10.0} = ExBanking.get_balance(from, @currency_tl)

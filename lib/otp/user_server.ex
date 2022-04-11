@@ -1,6 +1,5 @@
 defmodule ExBanking.Otp.UserServer do
   use GenServer
-  require Logger
   alias ExBanking.{Model.User, Otp.UserRegistry}
 
   @spec start_link(User.t()) :: :ignore | {:error, any} | {:ok, pid}
@@ -10,8 +9,6 @@ defmodule ExBanking.Otp.UserServer do
 
   @impl true
   def init(%User{} = user) do
-    Process.flag(:trap_exit, true)
-    Logger.info("Start user: #{inspect(user)}")
     {:ok, user}
   end
 
@@ -59,17 +56,11 @@ defmodule ExBanking.Otp.UserServer do
     {:noreply, state}
   end
 
-
-  @impl true
-  def terminate(reason, %User{} = state) do
-    Logger.info("Terminate user:#{inspect(state)}, reason: #{inspect(reason)}")
-    state
-  end
-
   @deprecated
   def receive_money(pid, amount, currency) when is_pid(pid),
     do: GenServer.call(pid, {:receive_money, amount, currency})
-    @deprecated
+
+  @deprecated
   def send_money(pid, to_pid, amount, currency) when is_pid(pid),
     do: GenServer.call(pid, {:send_money, to_pid, amount, currency})
 
