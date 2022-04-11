@@ -24,7 +24,7 @@ defmodule ExBanking.Otp.UserServer do
   end
 
   @impl true
-  def handle_call({:withdraw, amount, currency}, _from, user) do
+  def handle_call({:withdraw, amount, currency}, _from, %User{} = user) do
     case User.withdraw(user, amount, currency) do
       {:ok, updated_user} -> {:reply, User.get_balance(updated_user, currency), updated_user}
       err -> {:reply, err, user, {:continue, :decrease}}
@@ -32,13 +32,15 @@ defmodule ExBanking.Otp.UserServer do
   end
 
   @impl true
-  def handle_call({:receive_money, amount, currency}, _from, user) do
+  @deprecated "not used"
+  def handle_call({:receive_money, amount, currency}, _from, %User{} = user) do
     {:ok, updated_user} = User.deposit(user, amount, currency)
     {:reply, User.get_balance(updated_user, currency), updated_user, {:continue, :decrease}}
   end
 
   @impl true
-  def handle_call({:send_money, to_pid, amount, currency}, _from, user) do
+  @deprecated "not used"
+  def handle_call({:send_money, to_pid, amount, currency}, _from, %User{} = user) do
     with {:ok, updated_user} <- User.withdraw(user, amount, currency),
          {:ok, current_balance} = User.get_balance(updated_user, currency),
          {:ok, to_user_balance} <- receive_money(to_pid, amount, currency) do
@@ -49,7 +51,7 @@ defmodule ExBanking.Otp.UserServer do
   end
 
   @impl true
-  def handle_call({:get_balance, currency}, _from, user) do
+  def handle_call({:get_balance, currency}, _from, %User{} = user) do
     {:reply, User.get_balance(user, currency), user, {:continue, :decrease}}
   end
 
@@ -66,9 +68,11 @@ defmodule ExBanking.Otp.UserServer do
     state
   end
 
+  @deprecated "not used"
   def receive_money(pid, amount, currency) when is_pid(pid),
     do: GenServer.call(pid, {:receive_money, amount, currency})
 
+  @deprecated "not used"
   def send_money(pid, to_pid, amount, currency) when is_pid(pid),
     do: GenServer.call(pid, {:send_money, to_pid, amount, currency})
 

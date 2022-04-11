@@ -20,6 +20,7 @@ defmodule ExBanking.MixProject do
 
   defp deps do
     [
+      {:uuid, "~> 1.1", only: [:test], runtime: false},
       {:credo, "~> 1.6", only: [:dev, :test], runtime: false}
     ]
   end

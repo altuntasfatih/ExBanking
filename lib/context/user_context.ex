@@ -29,7 +29,7 @@ defmodule ExBanking.Context.UserContext do
     with {:from, {:ok, from_pid}} <- {:from, look_up(from_user)},
          {:to, {:ok, to_pid}} <- {:to, look_up(to_user)} do
       increase_operation_count([from_user, to_user])
-      UserServer.send_money(from_pid, to_pid, amount, currency)
+      transfer_money(from_pid, to_pid, amount, currency)
     else
       {:from, {:error, :user_does_not_exist}} ->
         {:error, :sender_does_not_exist}
@@ -42,6 +42,23 @@ defmodule ExBanking.Context.UserContext do
 
       {:to, {:error, :too_many_requests_to_user}} ->
         {:error, :too_many_requests_to_receiver}
+
+      err ->
+        err
+    end
+  end
+
+  defp transfer_money(from_pid, to_pid, amount, currency) do
+    with {:from, {:ok, from_balance}} <- {:from, UserServer.withdraw(from_pid, amount, currency)},
+         {:to, {:ok, to_balance}} <- {:to, UserServer.deposit(to_pid, amount, currency)} do
+      {:ok, from_balance, to_balance}
+    else
+      {:from, err} ->
+        err
+
+      {:to, err} ->
+        ## we need roolback
+        err
 
       err ->
         err

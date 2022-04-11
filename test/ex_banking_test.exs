@@ -1,36 +1,34 @@
 defmodule ExBankingTest do
   use ExUnit.Case
-  doctest ExBanking
-  alias ExBanking.Otp.{UserSupervisor, UserRegistry}
+  alias ExBanking.Otp.{UserSupervisor, UserRegistry, UserServer}
 
-  @user "test_user"
   @currency_tl "TL"
   @currency_usd "USD"
   @waiting_operation_count 20
 
   setup do
-    on_exit(fn ->
-      UserRegistry.unregister_records()
-      UserSupervisor.termine_all()
-    end)
+    on_exit(fn -> UserSupervisor.termine_all() end)
   end
 
   describe "create_user/1" do
     test "it should create user" do
-      assert :ok = ExBanking.create_user(@user)
+      assert :ok = ExBanking.create_user(random_user())
     end
 
     test "it should return user already exist user" do
-      :ok = ExBanking.create_user(@user)
+      user = random_user()
 
-      assert {:error, :user_already_exists} = ExBanking.create_user(@user)
+      assert :ok = ExBanking.create_user(user)
+      assert {:error, :user_already_exists} = ExBanking.create_user(user)
     end
   end
 
   describe "deposit/3" do
     setup do
-      :ok = ExBanking.create_user(@user)
-      %{user: @user}
+      user = random_user()
+      :ok = ExBanking.create_user(user)
+
+      %{user: user}
     end
 
     test "it should deposit TL", %{user: user} do
@@ -66,9 +64,11 @@ defmodule ExBankingTest do
 
   describe "withdraw/3" do
     setup do
-      :ok = ExBanking.create_user(@user)
-      {:ok, _} = ExBanking.deposit(@user, 100, @currency_usd)
-      %{user: @user}
+      user = random_user()
+      :ok = ExBanking.create_user(user)
+      {:ok, _} = ExBanking.deposit(user, 100, @currency_usd)
+
+      %{user: user}
     end
 
     test "it should withdraw", %{user: user} do
@@ -103,11 +103,12 @@ defmodule ExBankingTest do
 
   describe "get_balance/2" do
     setup do
-      :ok = ExBanking.create_user(@user)
-      {:ok, _} = ExBanking.deposit(@user, 100.05, @currency_tl)
-      {:ok, _} = ExBanking.deposit(@user, 39.99, @currency_usd)
+      user = random_user()
+      :ok = ExBanking.create_user(user)
+      {:ok, _} = ExBanking.deposit(user, 100.05, @currency_tl)
+      {:ok, _} = ExBanking.deposit(user, 39.99, @currency_usd)
 
-      %{user: @user}
+      %{user: user}
     end
 
     test "it should get_balance TL", %{user: user} do
@@ -139,11 +140,12 @@ defmodule ExBankingTest do
 
   describe "send/4" do
     setup do
-      to = "to_user"
-      :ok = ExBanking.create_user(@user)
+      from = random_user()
+      to = random_user()
+      :ok = ExBanking.create_user(from)
       :ok = ExBanking.create_user(to)
-      {:ok, _} = ExBanking.deposit(@user, 100.00, @currency_tl)
-      %{from: @user, to: to}
+      {:ok, _} = ExBanking.deposit(from, 100.00, @currency_tl)
+      %{from: from, to: to}
     end
 
     test "it should send money", %{from: from, to: to} do
@@ -192,8 +194,44 @@ defmodule ExBankingTest do
     end
   end
 
+  describe "deadlock" do
+    setup do
+      from = random_user()
+      to = random_user()
+      :ok = ExBanking.create_user(from)
+      :ok = ExBanking.create_user(to)
+      {:ok, _} = ExBanking.deposit(from, 10.0, @currency_tl)
+      {:ok, _} = ExBanking.deposit(to, 10.0, @currency_tl)
+      %{from: from, to: to}
+    end
+
+    test "it should support when two users try send money each other at same time", %{
+      from: from,
+      to: to
+    } do
+      Enum.to_list(0..9)
+      |> Enum.map(fn number ->
+        Task.async(fn ->
+          if rem(number, 2) == 0 do
+            {number, ExBanking.send(from, to, 1.0, @currency_tl)}
+          else
+            {number, ExBanking.send(to, from, 1.0, @currency_tl)}
+          end
+        end)
+      end)
+      |> Enum.each(fn task ->
+        assert {:ok, _result} = Task.yield(task)
+      end)
+
+      assert {:ok, 10.0} = ExBanking.get_balance(from, @currency_tl)
+      assert {:ok, 10.0} = ExBanking.get_balance(to, @currency_tl)
+    end
+  end
+
   defp increase_load(user),
     do:
       @waiting_operation_count !=
         UserRegistry.increase_operation_count(user, @waiting_operation_count)
+
+  defp random_user(), do: "user_" <> UUID.uuid4()
 end
