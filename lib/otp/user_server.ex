@@ -10,6 +10,7 @@ defmodule ExBanking.Otp.UserServer do
 
   @impl true
   def init(%User{} = user) do
+    Process.flag(:trap_exit, true)
     Logger.info("Start user: #{inspect(user)}")
     {:ok, user}
   end
